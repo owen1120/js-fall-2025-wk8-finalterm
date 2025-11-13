@@ -1,10 +1,5 @@
 import './assets/scss/all.scss';
 
-// import c3 from 'c3';
-// import 'c3/c3.css';
-
-// import axios from 'axios';
-
 import { getProducts, getCart, addToCart, deleteCartItem, deleteAllCartItems, postOrder } from './assets/js/api.js';
 
 const productList = document.querySelector('.productWrap');
