@@ -807,4 +807,25 @@ body {
 .orderTableWrap::-webkit-scrollbar {
   display: none;
 }
+
+.chartSection {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  .btn {
+    font-size: 1.25rem;
+    font-weight: bold;
+    align-self: center;
+    border: none;
+    border-radius: .5rem;
+    padding: .5rem 1rem;
+    margin-top: 2rem;
+    cursor: pointer;
+    
+    &:hover {
+      color: #fff;
+      background-color: #301E5F;
+    }
+  }
+}
 /*# sourceMappingURL=all.css.map */
