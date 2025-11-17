@@ -2,9 +2,13 @@ import './assets/scss/all.scss';
 
 import { getProducts, getCart, addToCart, deleteCartItem, deleteAllCartItems, postOrder } from './assets/js/api.js';
 
+import Swal from 'sweetalert2';
+import './node_modules/sweetalert2/dist/sweetalert2.min.css';
+
 const productList = document.querySelector('.productWrap');
 const cartTableBody = document.querySelector('.shoppingCart-table tbody');
 const cartTotalPrice = document.querySelector('.js-cart-total');
+const cartTableFooter = document.querySelector('.js-cart-footer');
 const discardAllBtn = document.querySelector('.discardAllBtn');
 const productFilter = document.querySelector('.productSelect');
 
@@ -23,7 +27,7 @@ function renderProducts(products) {
 
     products.forEach(product => {
         productHtml += `
-        <li class="productCard">
+        <li class="productCard" data-category="${product.category}">
             <h4 class="productType">新品</h4>
             <img src="${product.images}" alt="${product.title}">
             <a href="#" class="addCardBtn" data-id="${product.id}">加入購物車</a>
@@ -69,9 +73,9 @@ function renderCart(cart) {
 
     if (cart.carts.length === 0) {
         cartTableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px 0;">購物車目前是空的！</td></tr>';
-        discardAllBtn.style.display = 'none';
+        cartTableFooter.style.display = 'none';
     } else {
-        discardAllBtn.style.display = 'block';
+        cartTableFooter.style.display = 'table-footer-group';
     }
 }
 
@@ -92,22 +96,52 @@ function handleProductListClick(e) {
 
 async function addItemToCart(productId) {
   console.log('準備 POST 產品 ID:', productId);
+  
+  const existingItem = cartData.carts.find(item => {
+    return item.product.id === productId;
+  });
+
+  let newQty = 1;
+
+  if (existingItem) {
+    newQty = existingItem.quantity + 1;
+    console.log('產品已在購物車中，新的數量為:', newQty);
+  } else {
+    console.log('產品不在購物車中，將以數量 1 加入購物車');
+  }
+
   try {
-    const res = await addToCart(productId); 
-    
-    console.log('成功！API 回應:', res.data);
+    const res = await addToCart(productId, newQty);
+
+    console.log('加入購物車成功，API 回應:', res.data);
+
+    Swal .fire({
+        icon: 'success',
+        title: '成功加入購物車！',
+        text: `${existingItem ? existingItem.product.title : '新商品' } 的數量已更新為 ${newQty}！`,
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 2000,
+        timerProgressBar: true,
+    });
 
     const cartRes = await getCart();
     cartData = cartRes.data;
+    console.log('更新後的購物車資料:', cartData);
 
-    console.log('準備渲染的購物車資料:', cartData);
     renderCart(cartData);
-    console.log('完畢！');
-
+    console.log('購物車已更新並重新渲染');
   } catch (error) {
-    console.error('捕捉到「裂痕」:');
-    
-    console.error(error.response ? error.response.data : error); 
+    console.error('加入購物車時發生錯誤:', error);
+    console.error(error.response ? error.response.data : error);
+
+    Swal.fire({
+        icon: 'error',
+        title: '加入購物車失敗',
+        text: '無法將商品加入購物車，請稍後再試。',
+        confirmButtonColor: '#5434A7'
+    });
   }
 }
 
@@ -171,23 +205,34 @@ function handleProductFilter(e) {
 
     console.log('選取的分類:', category);
 
-    if (category === '全部') {
-        renderProducts(productsData);
-        return;
-    }
+    const allProductCards = productList.querySelectorAll('.productCard');
 
-    const filteredProducts = productsData.filter(product => {
-        return product.category === category;
-    });
+    allProductCards.forEach(card => {
 
-    renderProducts(filteredProducts);
+        if (category === '全部') {
+            card.style.display = 'block';
+        } else if (card.dataset.category === category) {
+            card.style.display = 'block';
+        } else {
+            card.style.display = 'none';
+        }
+    })
 }
 
 function handleOrderSubmit(e) {
     e.preventDefault();
 
     if (!validateForm()) {
-        alert('請完整填寫訂單資訊！');
+
+        // alert('請完整填寫訂單資訊！');
+
+        Swal.fire({
+            icon: 'error',
+            title: '表單驗證失敗',
+            text: '請完整且正確填寫訂單資訊！',
+            confirmButtonColor: '#5434A7'
+        });
+
         return;
     }
 
@@ -212,7 +257,14 @@ async function executePostOrder(orderData) {
 
         console.log('訂單送出成功，API 回應:', res.data);
 
-        alert('感謝您的訂購！我們已收到您的訂單。');
+        // alert('感謝您的訂購！我們已收到您的訂單。');
+
+        Swal.fire({
+            icon: 'success',
+            title: '訂單送出成功',
+            text: '感謝您的訂購！我們已收到您的訂單。',
+            confirmButtonColor: '#5434A7'
+        });
 
         orderForm.reset();
 
@@ -226,14 +278,28 @@ async function executePostOrder(orderData) {
 }
 
 function validateForm() {
-    if (
-        customerName.value.trim() === '' ||
-        customerPhone.value.trim() === '' ||
-        customerEmail.value.trim() === '' ||
-        customerAddress.value.trim() === '' 
-    ) {
+    const name = customerName.value.trim();
+    const phone = customerPhone.value.trim();
+    const email = customerEmail.value.trim();
+    const address = customerAddress.value.trim();
+
+    if (name === '' || phone === '' || email === '' || address === '') {
+        console.log('表單驗證失敗');
         return false;
     }
+
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(email)) {
+        console.warn('電子郵件格式不正確');
+        return false;
+    }
+
+    const phoneRegex = /^09\d{8}$/;
+    if (!phoneRegex.test(phone)) {
+        console.warn('手機號碼格式不正確');
+        return false;
+    }
+
     return true;
 }
 
