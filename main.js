@@ -223,17 +223,26 @@ function handleOrderSubmit(e) {
     e.preventDefault();
 
     if (!validateForm()) {
-
-        // alert('請完整填寫訂單資訊！');
-
         Swal.fire({
             icon: 'error',
             title: '表單驗證失敗',
             text: '請完整且正確填寫訂單資訊！',
             confirmButtonColor: '#5434A7'
         });
+        return; 
+    }
 
-        return;
+    if (cartData.carts.length === 0) {
+        
+        console.warn('【鑑定失敗】: 購物車是空的！已阻止 API 請求！');
+
+        Swal.fire({
+            icon: 'warning', 
+            title: '哦呀？購物車是空的！',
+            text: '你還沒挑選任何「寶石」呢，這樣可不能送出哦！',
+            confirmButtonColor: '#5434A7'
+        });
+        return; 
     }
 
     const orderData = {
@@ -246,8 +255,7 @@ function handleOrderSubmit(e) {
         }
     };
 
-    console.log('準備送出訂單資料:', orderData);
-
+    console.log('【鑑定通過】準備送出訂單資料:', orderData);
     executePostOrder(orderData);
 }
 
